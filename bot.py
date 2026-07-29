@@ -9,10 +9,10 @@ bot = telebot.TeleBot(BOT_TOKEN)
 @bot.message_handler(commands=['start'])
 def start(message):
     msg = """🤍 هلا بيك ! 
-انا بوت الزخرفة التلقائي
+انا بوت الزخرفة التلقائي 🔥
 اكتب اي اسم او كلمة واني ازخرفها الك فوراً
 
-مثال: اكتب احمد
+مثال: احمد
 """
     bot.reply_to(message, msg)
 

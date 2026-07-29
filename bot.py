@@ -69,8 +69,8 @@ def start(message):
         bot.send_message(message.chat.id, txt, reply_markup=keyboard)
         return
 
-    # رسالة ترحيب فخمة
-    welcome = f"""
+    # رسالة ترحيب فخمة + صورة المطور
+    caption = f"""
 𓆩 𝗪𝗘𝗟𝗖𝗢𝗠𝗘 𝗧𝗢 𝗭𝗔𝗞𝗛𝗥𝗔𝗙𝗔 𝗕𝗢𝗧 𓆪
 
 مرحباً بك [{name}](tg://user?id={user_id}) 👑
@@ -80,16 +80,18 @@ def start(message):
 ✧ اختار "زخرفه الاسماء" من القائمة ادناه
 
 ╭━━━━━━━━━━━━━━╮
-   المطور: {DEVELOPER}
+   👑 المطور: {DEVELOPER}
 ╰━━━━━━━━━━━━━━╯
 """
-    bot.send_message(message.chat.id, welcome, parse_mode="Markdown", reply_markup=main_menu())
+    try:
+        bot.send_photo(message.chat.id, photo=DEVELOPER_ID, caption=caption, parse_mode="Markdown", reply_markup=main_menu())
+    except:
+        bot.send_message(message.chat.id, caption, parse_mode="Markdown", reply_markup=main_menu())
 
 def main_menu():
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("♡ زخرفه الاسماء ♡", callback_data='ZARMOF'))
-    markup.add(telebot.types.InlineKeyboardButton("📸 صورة المطور", callback_data='dev_photo'))
-    markup.add(telebot.types.InlineKeyboardButton("👑 المطور", url=f"https://t.me/{DEVELOPER.replace('@','')}"))
+    markup.add(telebot.types.InlineKeyboardButton("👑 قناة المطور", url=f"https://t.me/{DEVELOPER.replace('@','')}"))
     return markup
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -99,15 +101,12 @@ def callback(call):
         write_file(f"zkref/{uid}/zeakef.txt", "ARMOF0")
         bot.edit_message_text("🔮 ارسل اسمك الان وسأزخرفه لك بـ 8 اشكال 🔮", call.message.chat.id, call.message_id, reply_markup=back_btn())
     
-    elif call.data == "dev_photo":
-        try:
-            bot.send_photo(call.message.chat.id, photo=DEVELOPER_ID, caption=f"المطور: {DEVELOPER}\nراسلني اذا احتاجيت شي 👑")
-        except:
-            bot.send_message(call.message.chat.id, f"المطور: {DEVELOPER}")
-    
     elif call.data == "back":
-        welcome = f"مرحباً بك [{call.from_user.first_name}](tg://user?id={uid}) 👑\nاختر من القائمة ادناه:"
-        bot.edit_message_text(welcome, call.message.chat.id, call.message_id, parse_mode="Markdown", reply_markup=main_menu())
+        caption = f"مرحباً بك [{call.from_user.first_name}](tg://user?id={uid}) 👑\nاختر من القائمة ادناه:"
+        try:
+            bot.edit_message_media(media=telebot.types.InputMediaPhoto(DEVELOPER_ID, caption=caption, parse_mode="Markdown"), chat_id=call.message.chat.id, message_id=call.message_id, reply_markup=main_menu())
+        except:
+            bot.edit_message_text(caption, call.message.chat.id, call.message_id, parse_mode="Markdown", reply_markup=main_menu())
 
 def back_btn():
     markup = telebot.types.InlineKeyboardMarkup()
@@ -121,7 +120,6 @@ def handle_text(message):
     
     if text == "/start": return
     
-    # زخرفة فقط
     if os.path.exists(f"zkref/{uid}/zeakef.txt") and read_file(f"zkref/{uid}/zeakef.txt") == "ARMOF0":
         for i in range(8):
             bot.send_message(message.chat.id, zakhrafa_text(text))

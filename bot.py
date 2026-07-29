@@ -12,17 +12,28 @@ CHANNEL2 = "" # القناة الثانية - فاضية
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# ====== انشاء المجلدات تلقائي ======
+os.makedirs("zkref", exist_ok=True)
+os.makedirs("LOrDARMOF", exist_ok=True)
+os.makedirs("2xref/1076477010", exist_ok=True) # هذا الي كان ناقص
+
 # ====== ملفات ======
-def read_file(f): return open(f).read().strip() if os.path.exists(f) else ""
-def write_file(f, data): open(f, 'w').write(data)
+def read_file(f): 
+    return open(f).read().strip() if os.path.exists(f) else ""
+
+def write_file(f, data): 
+    os.makedirs(os.path.dirname(f), exist_ok=True) # ينشئ المجلد قبل الكتابة
+    with open(f, 'w', encoding='utf-8') as file:
+        file.write(data)
+
 def get_members():
     if not os.path.exists("ARMOF4.txt"): return []
-    return [x.strip() for x in open("ARMOF4.txt").read().splitlines() if x.strip()]
+    return [x.strip() for x in open("ARMOF4.txt", encoding='utf-8').read().splitlines() if x.strip()]
 
 def add_member(uid):
     members = get_members()
     if str(uid) not in members:
-        with open("ARMOF4.txt", "a") as f: f.write(f"{uid}\n")
+        with open("ARMOF4.txt", "a", encoding='utf-8') as f: f.write(f"{uid}\n")
 
 def check_sub(user_id):
     ch1 = read_file("ARMOF0.txt")
@@ -50,11 +61,10 @@ def start(message):
     name = message.from_user.first_name
     add_member(user_id)
     
-    # فحص الاشتراك
     if not check_sub(user_id):
         ch1 = read_file("ARMOF0.txt") or CHANNEL1
         ch2 = read_file("ARMOF1.txt")
-        txt = f"""- ▫️ عذراً عزيزي ، 🔰
+        txt = f"""- ▫️ عذراً عزي ، 🔰
 ▪️ يجب عليك الإشتراك في القناة أولاً ⚜️؛
 - اشترك ثم ارسل /start 📛!
 
@@ -86,22 +96,21 @@ def main_menu():
 def callback(call):
     uid = call.from_user.id
     if call.data == "ZARMOF":
-        write_file(f"zkref/{uid}/zeakef.txt", "ARMOF0")
+        write_file(f"zkref/{uid}/zeakef.txt", "ARMOF0") # هنا كان يوكع
         bot.edit_message_text("حـسنـاً ارسـل اسـمكك 😻💞\nW𝒆𝒍 𝒔𝒆𝒏𝒅 𝒚𝒐𝒖𝒓 𝒏𝒂𝒎𝒆", call.message.chat.id, call.message.message_id, reply_markup=back_btn())
     
     elif call.data == "bio":
-        write_file(f"LOrDARMOF/{uid}/LOrDdARMOF.txt", "ARMOF0")
+        write_file(f"LOrDARMOF/{uid}/LOrDdARMOF.txt", "ARMOF0") # وهنا همين
         bot.edit_message_text("قـم بـارسـال مـعرفـك فـقط\nO𝒏𝒍𝒚 𝒔𝒆𝒏𝒅 𝒚𝒐𝒖𝒓 𝒂𝒄𝒒𝒖𝒂𝒊𝒏𝒕𝒂𝒏𝒄𝒆", call.message.chat.id, call.message.message_id, reply_markup=back_btn())
     
     elif call.data == "dev":
-        bot.edit_message_text(f"『 A𝐑𝐌𝐎𝐅 𝆴𝄵』 𓆩 iraq 🇮🇶 𓆪\n﹎﹎﹎\nالمطور: {DEVELOPER}", call.message.chat.id, call.message.message_id, reply_markup=back_btn())
+        bot.edit_message_text(f"『 A𝐑𝐌𝐎𝐅 𝆴𝄵』 𓆩 iraq 🇮🇶 𓆪\n﹎\nالمطور: {DEVELOPER}", call.message.chat.id, call.message.message_id, reply_markup=back_btn())
     
     elif call.data == "back":
-        bot.edit_message_text(f"[{call.from_user.first_name}](tg://user?id={uid})\n📮☑:مرحبا بك\n\nالمطور: {DEVELOPER}", call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=main_menu())
+        bot.edit_message_text(f"[{call.from_user.first_name}](tg://user?id={uid})\n📮☑:مرحبا بك\nالمطور: {DEVELOPER}", call.message.chat.id, call.message_id, parse_mode="Markdown", reply_markup=main_menu())
     
-    # لوحة الادمن
     elif call.data == "ARMOF" and uid == ADMIN_ID:
-        bot.edit_message_text("لوحة التحكم", call.message.chat.id, call.message.message_id, reply_markup=admin_menu())
+        bot.edit_message_text("لوحة التحكم", call.message.chat.id, call.message_id, reply_markup=admin_menu())
 
 def back_btn():
     markup = telebot.types.InlineKeyboardMarkup()
@@ -116,7 +125,6 @@ def admin_menu():
     markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data="back"))
     return markup
 
-# ====== معالجة الرسائل ======
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     uid = message.from_user.id
@@ -128,14 +136,12 @@ def handle_text(message):
     
     if text == "/start": return
     
-    # زخرفة
     if os.path.exists(f"zkref/{uid}/zeakef.txt") and read_file(f"zkref/{uid}/zeakef.txt") == "ARMOF0":
         for i in range(8):
             bot.send_message(message.chat.id, zakhrafa_text(text))
         write_file(f"zkref/{uid}/zeakef.txt", "")
         return
     
-    # بايو
     if os.path.exists(f"LOrDARMOF/{uid}/LOrDdARMOF.txt") and read_file(f"LOrDARMOF/{uid}/LOrDdARMOF.txt") == "ARMOF0":
         bio = f"- T𝗛𝗘 𝗦𝗘𝗖𝗥𝗘𝗧 𝗢𝗙 𝗖𝗛𝗮𝗡𝗚𝗘\n___________\n♡ : ᴹᴬᴺᴳᴱᴿ ➤ {text}\n\nالمطور: {DEVELOPER}"
         bot.send_message(message.chat.id, f"`{bio}`", parse_mode="Markdown")
@@ -150,4 +156,4 @@ def run(): app.run(host='0.0.0.0', port=8080)
 Thread(target=run).start()
 
 print("Bot Started...")
-bot.polling(none_stop=True)
+bot.infinity_polling() # غيرتها من polling لان افضل

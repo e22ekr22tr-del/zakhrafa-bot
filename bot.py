@@ -8,7 +8,7 @@ from flask import Flask
 API_KEY = os.environ.get("BOT_TOKEN")  
 UserBot = "Tik_TokLBOT" # معرف بوتك
 IdBot = "2119941952"
-ADMIN = 1076477010 # حط ايدك هنا
+ADMIN = 1076477010 # ايدك
 
 bot = telebot.TeleBot(API_KEY, parse_mode="Markdown")
 
@@ -31,10 +31,11 @@ def filterName(name):
     for s in scam: name = name.replace(s, '')
     return name
 
-# انشاء الملفات اذا مو موجودة
-if not os.path.exists("hamsa.json"): save("hamsa.json", {})
-if not os.path.exists("memb.txt"): open("memb.txt", 'w', encoding='utf-8').close()
-if not os.path.exists("blocklist.txt"): open("blocklist.txt", 'w', encoding='utf-8').close()
+# انشاء الملفات
+for f in ["hamsa.json", "memb.txt", "blocklist.txt"]:
+    if not os.path.exists(f): 
+        if f == "hamsa.json": save(f, {})
+        else: open(f, 'w', encoding='utf-8').close()
 
 # رسالة الترحيب الفخمة
 WELCOME_MSG = """
@@ -50,7 +51,12 @@ WELCOME_MSG = """
 4.  ارسل الهمسة وراح توصل اله سريه
 
 🔒 **الهمسة يشوفها بس المرسل والمستلم**
+
+👑 **المطور:** المحامي احمد علي
 """
+
+# رابط صورة المطور - غيرها اذا تريد صورة ثانية
+DEV_PHOTO = "https://t.me/{}".format(ADMIN) # او حط رابط مباشر لصورتك
 
 # ====== /start ======
 @bot.message_handler(commands=['start'])
@@ -82,7 +88,12 @@ def start(message):
     
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
-    bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
+    
+    # ارسال صورة المطور + الترحيب
+    try:
+        bot.send_photo(chat_id, photo=DEV_PHOTO, caption=WELCOME_MSG, reply_markup=markup)
+    except:
+        bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
 
 # ====== لوحة الادمن ======
 @bot.message_handler(commands=['admin'])
@@ -134,6 +145,10 @@ def get_hamsa_text(message):
     
     bot.send_message(message.chat.id, "*⤾ . تم ارسال الهمسة بنجاح 🥳✅*")
     
+    # نخزن الهمسة بمفتاح خاص قبل الارسال
+    h['temp_hamsa'] = text
+    save("hamsa.json", h)
+    
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(
         telebot.types.InlineKeyboardButton("🧧 فتح الهمسـه", callback_data=f"open&{data['to']}&{from_id}"),
@@ -147,12 +162,14 @@ def get_hamsa_text(message):
         reply_markup=markup
     )
     
-    h[f"msg_{msg.message_id}"] = text
+    # نحفظ الهمسة بمفتاح رسالة البوت
+    h[f"msg_{msg.message_id}"] = h['temp_hamsa']
+    del h['temp_hamsa']
     save("hamsa.json", h)
     del h[str(from_id)]
     save("hamsa.json", h)
 
-# ====== فتح الهمسة ======
+# ====== فتح الهمسة - مصلح ======
 @bot.callback_query_handler(func=lambda call: call.data.startswith("open&"))
 def open_hamsa(call):
     _, to_id, from_id = call.data.split("&")
@@ -160,7 +177,7 @@ def open_hamsa(call):
     from_id2 = call.from_user.id
     
     h = load("hamsa.json")
-    text = h.get(f"msg_{call.message_id}")
+    text = h.get(f"msg_{call.message.message_id}") # استخدمنا message.message_id
     
     if not text: 
         bot.answer_callback_query(call.id, "❌ الهمسة منتهية او محذوفة", show_alert=True)

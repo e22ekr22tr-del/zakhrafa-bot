@@ -7,7 +7,6 @@ from flask import Flask
 
 API_KEY = os.environ.get("BOT_TOKEN")  
 UserBot = "Tik_TokLBOT" # معرف بوتك
-IdBot = "2119941952"
 ADMIN = 1076477010 # ايدك
 
 bot = telebot.TeleBot(API_KEY, parse_mode="Markdown")
@@ -36,9 +35,6 @@ for f in ["hamsa.json", "memb.txt", "blocklist.txt"]:
     if not os.path.exists(f): 
         if f == "hamsa.json": save(f, {})
         else: open(f, 'w', encoding='utf-8').close()
-
-# رابط الصورة الدائمية
-DEV_PHOTO_URL = "https://t.me/c/1746542240/9"
 
 # رسالة الترحيب الفخمة + رابط المطور
 WELCOME_MSG = """
@@ -89,9 +85,9 @@ def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
     
-    # ارسال الصورة من الرابط + الترحيب
+    # ارسال صورة المطور من ايده + الترحيب
     try:
-        bot.send_photo(chat_id, photo=DEV_PHOTO_URL, caption=WELCOME_MSG, reply_markup=markup)
+        bot.send_photo(chat_id, photo=ADMIN, caption=WELCOME_MSG, reply_markup=markup)
     except:
         bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
 
@@ -157,12 +153,13 @@ def get_hamsa_text(message):
         reply_markup=markup
     )
     
+    # حفظ الهمسة بمفتاح رسالة البوت
     h[f"msg_{msg.message_id}"] = text
     save("hamsa.json", h)
     del h[str(from_id)]
     save("hamsa.json", h)
 
-# ====== فتح الهمسة ======
+# ====== فتح الهمسة - مصلح ======
 @bot.callback_query_handler(func=lambda call: call.data.startswith("open&"))
 def open_hamsa(call):
     _, to_id, from_id = call.data.split("&")
@@ -170,7 +167,7 @@ def open_hamsa(call):
     from_id2 = call.from_user.id
     
     h = load("hamsa.json")
-    key = f"msg_{call.message_id}"
+    key = f"msg_{call.message_id}" # التعديل المهم هنا
     text = h.get(key)
     
     if not text: 
@@ -183,17 +180,18 @@ def open_hamsa(call):
         bot.answer_callback_query(call.id, "🔒 الهمسة ليست لك", show_alert=True)
         bot.send_message(from_id, f"*⚠️ لقد حاول هذا الشخص كشف همستك*\n\n*الشخص:* [{filterName(call.from_user.first_name)}](tg://user?id={from_id2})")
 
-# ====== حذف الهمسة ======
+# ====== حذف الهمسة - مصلح ======
 @bot.callback_query_handler(func=lambda call: call.data.startswith("del#"))
 def del_hamsa(call):
     from_id = int(call.data.split("#")[1])
     if call.from_user.id == from_id:
         h = load("hamsa.json")
-        key = f"msg_{call.message_id}"
+        key = f"msg_{call.message.message_id}" # التعديل المهم هنا
         if key in h:
             del h[key]
             save("hamsa.json", h)
-        bot.delete_message(call.message.chat.id, call.message_id)
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        bot.answer_callback_query(call.id, "✅ تم حذف الهمسة")
     else:
         bot.answer_callback_query(call.id, "لحذف الهمسة يجب أن تكون انت من ارسل هذه الهمسة", show_alert=True)
 
@@ -202,7 +200,7 @@ def del_hamsa(call):
 def mem(call):
     memb = read_file("memb.txt").splitlines()
     band = read_file("blocklist.txt").splitlines()
-    bot.edit_message_text(f"*📟 احصـائيات البـوت:\n\n👥 المشتركين: {len(memb)}\n🚫 المحظورين: {len(band)}*", call.message.chat.id, call.message_id)
+    bot.edit_message_text(f"*📟 احصـائيات البـوت:\n\n👥 المشتركين: {len(memb)}\n🚫 المحظورين: {len(band)}*", call.message.chat.id, call.message.message_id)
 
 # ====== تشغيل Flask + Bot ======
 app = Flask('')

@@ -1,7 +1,6 @@
 import telebot
 import os
 import json
-import time
 from threading import Thread
 from flask import Flask
 
@@ -11,7 +10,6 @@ IdBot = "2119941952"
 ADMIN = 1076477010 # حط ايدك هنا
 
 bot = telebot.TeleBot(API_KEY, parse_mode="Markdown")
-hamsa = {}
 
 # ====== دوال مساعدة ======
 def save(file, data):
@@ -43,7 +41,8 @@ def start(message):
     chat_id = message.chat.id
     from_id = message.from_user.id
     name = filterName(message.from_user.first_name)
-    
+    text = message.text
+
     # حفظ العضو
     memb = read_file("memb.txt").splitlines()
     if str(from_id) not in memb:
@@ -55,6 +54,17 @@ def start(message):
         bot.send_message(chat_id, "⛳| عزي انت محظور من البوت")
         return
     
+    h = load("hamsa.json")
+
+    # اذا ضغط على زر الهمسة
+    if text == "/start hamsa":
+        if str(from_id) in h and h[str(from_id)].get('state') == 'waiting':
+            bot.send_message(chat_id, "*⤾حسناً ارسل الهمسة الآن 🧸♥️*")
+            h[str(from_id)]['state'] = 'send'
+            save("hamsa.json", h)
+        return
+    
+    # ستارت العادي
     sta = read_file("start.txt") or f"اهلا بك [{name}](tg://user?id={from_id})\n📮 بوت الهمسات السريه"
     bot.send_message(chat_id, sta)
 
@@ -86,14 +96,15 @@ def hamsa_reply(message):
     to_id = message.reply_to_message.from_user.id
     chat_id = message.chat.id
     
-    hamsa[str(from_id)] = {
+    h = load("hamsa.json")
+    h[str(from_id)] = {
         'chat_id': chat_id,
         'to': to_id,
         'msg_id': message.message_id,
         'reply_msg_id': message.reply_to_message.message_id,
         'state': 'waiting'
     }
-    save("hamsa.json", hamsa)
+    save("hamsa.json", h)
     
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("قم بارسال الهمسه بـ الخاص🧸♥️", callback_data=f"hamsa|{from_id}"))
@@ -102,16 +113,6 @@ def hamsa_reply(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("hamsa|"))
 def hamsa_private(call):
     bot.answer_callback_query(call.id, url=f"https://t.me/{UserBot}?start=hamsa")
-
-@bot.message_handler(commands=['start'])
-def start_hamsa(message):
-    if message.text == "/start hamsa":
-        from_id = message.from_user.id
-        h = load("hamsa.json")
-        if str(from_id) in h and h[str(from_id)].get('state') == 'waiting':
-            bot.send_message(message.chat.id, "*⤾حسناً ارسل الهمسة الآن 🧸♥️*")
-            h[str(from_id)]['state'] = 'send'
-            save("hamsa.json", h)
 
 @bot.message_handler(func=lambda m: str(m.from_user.id) in load("hamsa.json") and load("hamsa.json")[str(m.from_user.id)].get('state') == 'send')
 def get_hamsa_text(message):
@@ -183,10 +184,14 @@ def bc(call):
 
 def do_broadcast(message):
     memb = read_file("memb.txt").splitlines()
+    c = 0
     for user in memb:
-        try: bot.send_message(user, message.text)
+        try: 
+            bot.send_message(user, message.text)
+            c += 1
+            time.sleep(0.1)
         except: pass
-    bot.send_message(message.chat.id, "- تمت الاذاعه . 🖤")
+    bot.send_message(message.chat.id, f"- تمت الاذاعه لـ {c} عضو . 🖤")
 
 # ====== احصائيات ======
 @bot.callback_query_handler(func=lambda call: call.data == "mem" and call.from_user.id == ADMIN)

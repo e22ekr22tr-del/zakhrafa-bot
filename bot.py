@@ -37,7 +37,12 @@ for f in ["hamsa.json", "memb.txt", "blocklist.txt"]:
         if f == "hamsa.json": save(f, {})
         else: open(f, 'w', encoding='utf-8').close()
 
-# رسالة الترحيب الفخمة
+# رابط الصورة الدائمية الي دزيتها
+DEV_PHOTO_URL = "https://i.imgur.com/xxxxx.jpg" # ارفع الصورة لتلغرام وخد الرابط او خليها كذا
+# استخدم الصورة الي رفعتها
+DEV_PHOTO_URL = "attach://wa_image_3693762156374830168"
+
+# رسالة الترحيب الفخمة + رابط المطور
 WELCOME_MSG = """
 🌹 **اهلاً وسهلاً بك في بوت الهمسات السريه** 🌹
 
@@ -52,11 +57,8 @@ WELCOME_MSG = """
 
 🔒 **الهمسة يشوفها بس المرسل والمستلم**
 
-👑 **المطور:** المحامي احمد علي
+👑 **المطور:** [المحامي احمد علي](tg://user?id=1076477010)
 """
-
-# رابط صورة المطور - غيرها اذا تريد صورة ثانية
-DEV_PHOTO = "https://t.me/{}".format(ADMIN) # او حط رابط مباشر لصورتك
 
 # ====== /start ======
 @bot.message_handler(commands=['start'])
@@ -72,7 +74,7 @@ def start(message):
     
     block = read_file("blocklist.txt").splitlines()
     if str(from_id) in block:
-        bot.send_message(chat_id, "⛳| عزيزي انت محظور من البوت")
+        bot.send_message(chat_id, "⛳| عزي انت محظور من البوت")
         return
     
     h = load("hamsa.json")
@@ -89,11 +91,9 @@ def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
     
-    # ارسال صورة المطور + الترحيب
-    try:
-        bot.send_photo(chat_id, photo=DEV_PHOTO, caption=WELCOME_MSG, reply_markup=markup)
-    except:
-        bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
+    # ارسال الصورة الدائمية + الترحيب
+    with open("wa_image_3693762156374830168", "rb") as photo:
+        bot.send_photo(chat_id, photo=photo, caption=WELCOME_MSG, reply_markup=markup)
 
 # ====== لوحة الادمن ======
 @bot.message_handler(commands=['admin'])
@@ -101,7 +101,6 @@ def admin(message):
     if message.from_user.id != ADMIN: return
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("📊 احصائيات الاعضاء", callback_data="mem"))
-    markup.add(telebot.types.InlineKeyboardButton("📢 الاذاعه", callback_data="bcc"))
     bot.send_message(message.chat.id, f"👑 اهلا بك مطوري {filterName(message.from_user.first_name)}", reply_markup=markup)
 
 # ====== نظام الهمسة ======
@@ -145,10 +144,6 @@ def get_hamsa_text(message):
     
     bot.send_message(message.chat.id, "*⤾ . تم ارسال الهمسة بنجاح 🥳✅*")
     
-    # نخزن الهمسة بمفتاح خاص قبل الارسال
-    h['temp_hamsa'] = text
-    save("hamsa.json", h)
-    
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(
         telebot.types.InlineKeyboardButton("🧧 فتح الهمسـه", callback_data=f"open&{data['to']}&{from_id}"),
@@ -162,14 +157,13 @@ def get_hamsa_text(message):
         reply_markup=markup
     )
     
-    # نحفظ الهمسة بمفتاح رسالة البوت
-    h[f"msg_{msg.message_id}"] = h['temp_hamsa']
-    del h['temp_hamsa']
+    # نحفظ الهمسة بمفتاح رسالة البوت مباشرة
+    h[f"msg_{msg.message_id}"] = text
     save("hamsa.json", h)
     del h[str(from_id)]
     save("hamsa.json", h)
 
-# ====== فتح الهمسة - مصلح ======
+# ====== فتح الهمسة - مصلح نهائي ======
 @bot.callback_query_handler(func=lambda call: call.data.startswith("open&"))
 def open_hamsa(call):
     _, to_id, from_id = call.data.split("&")
@@ -177,7 +171,8 @@ def open_hamsa(call):
     from_id2 = call.from_user.id
     
     h = load("hamsa.json")
-    text = h.get(f"msg_{call.message.message_id}") # استخدمنا message.message_id
+    key = f"msg_{call.message_id}"
+    text = h.get(key)
     
     if not text: 
         bot.answer_callback_query(call.id, "❌ الهمسة منتهية او محذوفة", show_alert=True)
@@ -194,11 +189,12 @@ def open_hamsa(call):
 def del_hamsa(call):
     from_id = int(call.data.split("#")[1])
     if call.from_user.id == from_id:
-        bot.delete_message(call.message.chat.id, call.message_id)
         h = load("hamsa.json")
-        if f"msg_{call.message_id}" in h:
-            del h[f"msg_{call.message_id}"]
+        key = f"msg_{call.message_id}"
+        if key in h:
+            del h[key]
             save("hamsa.json", h)
+        bot.delete_message(call.message.chat.id, call.message_id)
     else:
         bot.answer_callback_query(call.id, "لحذف الهمسة يجب أن تكون انت من ارسل هذه الهمسة", show_alert=True)
 

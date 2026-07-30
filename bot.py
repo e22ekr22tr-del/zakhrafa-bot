@@ -12,14 +12,26 @@ ADMIN = 1076477010
 
 bot = telebot.TeleBot(API_KEY, parse_mode="Markdown")
 
+HAMSA_DB = {} # نخزن بالذاكرة هم
+print("Loading DB...")
+
 def save(file, data):
-    with open(file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False)
+    try:
+        with open(file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        global HAMSA_DB
+        HAMSA_DB = data.copy() # نسخ للذاكرة
+        print(f"Saved {len(data)} items")
+    except Exception as e:
+        print("Save Error:", e)
 
 def load(file):
+    global HAMSA_DB
+    if HAMSA_DB: return HAMSA_DB # اذا موجود بالذاكرة رجعه
     if os.path.exists(file):
         with open(file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            HAMSA_DB = json.load(f)
+            return HAMSA_DB
     return {}
 
 def read_file(f):
@@ -34,6 +46,8 @@ for f in ["hamsa.json", "memb.txt", "blocklist.txt"]:
     if not os.path.exists(f): 
         if f == "hamsa.json": save(f, {})
         else: open(f, 'w', encoding='utf-8').close()
+
+HAMSA_DB = load("hamsa.json") # حمل اول ما يشتغل
 
 WELCOME_MSG = """
 🌹 **اهلاً وسهلاً بك في بوت الهمسات السريه** 🌹
@@ -63,7 +77,7 @@ def start(message):
                 h[str(from_id)]['state'] = 'send'
                 save("hamsa.json", h)
             else:
-                bot.send_message(chat_id, "⚠️ لا توجد همسة بانتظارك")
+                bot.send_message(chat_id, "⚠️ لا توجد همسة بانتظارك. ارسل همسة بالكروب اول")
             return
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
@@ -73,13 +87,6 @@ def start(message):
             bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
     except Exception as e:
         print("Error in start:", traceback.format_exc())
-
-@bot.message_handler(commands=['admin'])
-def admin(message):
-    if message.from_user.id != ADMIN: return
-    markup = telebot.types.InlineKeyboardMarkup()
-    markup.add(telebot.types.InlineKeyboardButton("📊 احصائيات الاعضاء", callback_data="mem"))
-    bot.send_message(message.chat.id, f"👑 اهلا بك مطوري {filterName(message.from_user.first_name)}", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text and m.text.strip() in ["همسه", "همسة", "اهمس", "أهمس"])
 def hamsa_reply(message):
@@ -100,9 +107,8 @@ def hamsa_reply(message):
         chat_id = message.chat.id
         reply_id = message.reply_to_message.message_id
         
-        # رقم تسلسلي قصير بدل المفتاح الطويل
         h = load("hamsa.json")
-        hamsa_id = str(int(time.time())) # رقم وقتي قصير
+        hamsa_id = str(int(time.time())) + str(from_id)[-3:] # رقم فريد
         
         h[str(from_id)] = {
             'chat_id': chat_id,
@@ -112,6 +118,7 @@ def hamsa_reply(message):
             'state': 'waiting'
         }
         save("hamsa.json", h)
+        print(f"Created hamsa request: {hamsa_id}")
         
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("❤️ قم بارسال الهمسه بـ الخاص", url=f"https://t.me/{UserBot}?start=hamsa"))
@@ -130,16 +137,15 @@ def get_hamsa_text(message):
         
         bot.send_message(message.chat.id, "*⤾ . تم ارسال الهمسة بنجاح 🥳✅*")
         
-        # نخزن الهمسة برقم قصير
         h[data['hamsa_id']] = {
             'text': text,
             'from': from_id,
             'to': data['to']
         }
         save("hamsa.json", h)
+        print(f"Saved hamsa content for id: {data['hamsa_id']}")
         
         markup = telebot.types.InlineKeyboardMarkup()
-        # هسه الزر قصير جدا
         markup.add(
             telebot.types.InlineKeyboardButton("🧧 فتح الهمسـه", callback_data=f"o&{data['hamsa_id']}"),
             telebot.types.InlineKeyboardButton("🚫 حذف", callback_data=f"d&{data['hamsa_id']}")
@@ -162,11 +168,14 @@ def get_hamsa_text(message):
 def open_hamsa(call):
     try:
         _, hamsa_id = call.data.split("&")
+        print(f"Opening hamsa_id: {hamsa_id}")
         h = load("hamsa.json")
+        print(f"DB has {len(h)} items. Keys: {list(h.keys())}")
         data = h.get(hamsa_id)
         
         if not data: 
-            bot.answer_callback_query(call.id, "❌ الهمسة منتهية او محذوفة", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ الهمسة منتهية او محذوفة. جرب ترسل وحدة جديدة", show_alert=True)
+            print(f"Hamsa {hamsa_id} not found")
             return
         
         from_id = data['from']
@@ -176,11 +185,13 @@ def open_hamsa(call):
     
         if from_id2 == to_id or from_id2 == from_id:
             bot.answer_callback_query(call.id, f"💌 الهمسة:\n\n{text}", show_alert=True)
+            print("Hamsa opened successfully")
         else:
             bot.answer_callback_query(call.id, "🔒 الهمسة ليست لك", show_alert=True)
             bot.send_message(from_id, f"*⚠️ لقد حاول هذا الشخص كشف همستك*\n\n*الشخص:* [{filterName(call.from_user.first_name)}](tg://user?id={from_id2})")
     except Exception as e:
         print("Error in open_hamsa:", traceback.format_exc())
+        bot.answer_callback_query(call.id, f"❌ صار خطأ: {e}", show_alert=True)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("d&"))
 def del_hamsa(call):
@@ -200,12 +211,6 @@ def del_hamsa(call):
             bot.answer_callback_query(call.id, "لحذف الهمسة يجب أن تكون انت من ارسل هذه الهمسة", show_alert=True)
     except Exception as e:
         print("Error in del_hamsa:", traceback.format_exc())
-
-@bot.callback_query_handler(func=lambda call: call.data == "mem" and call.from_user.id == ADMIN)
-def mem(call):
-    memb = read_file("memb.txt").splitlines()
-    band = read_file("blocklist.txt").splitlines()
-    bot.edit_message_text(f"*📟 احصـائيات البـوت:\n\n👥 المشتركين: {len(memb)}\n🚫 المحظورين: {len(band)}*", call.message.chat.id, call.message_id)
 
 app = Flask('')
 @app.route('/')

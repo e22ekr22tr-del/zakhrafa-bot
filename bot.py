@@ -37,10 +37,8 @@ for f in ["hamsa.json", "memb.txt", "blocklist.txt"]:
         if f == "hamsa.json": save(f, {})
         else: open(f, 'w', encoding='utf-8').close()
 
-# رابط الصورة الدائمية الي دزيتها
-DEV_PHOTO_URL = "https://i.imgur.com/xxxxx.jpg" # ارفع الصورة لتلغرام وخد الرابط او خليها كذا
-# استخدم الصورة الي رفعتها
-DEV_PHOTO_URL = "attach://wa_image_3693762156374830168"
+# رابط الصورة الدائمية
+DEV_PHOTO_URL = "https://t.me/c/1746542240/9"
 
 # رسالة الترحيب الفخمة + رابط المطور
 WELCOME_MSG = """
@@ -91,9 +89,11 @@ def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
     
-    # ارسال الصورة الدائمية + الترحيب
-    with open("wa_image_3693762156374830168", "rb") as photo:
-        bot.send_photo(chat_id, photo=photo, caption=WELCOME_MSG, reply_markup=markup)
+    # ارسال الصورة من الرابط + الترحيب
+    try:
+        bot.send_photo(chat_id, photo=DEV_PHOTO_URL, caption=WELCOME_MSG, reply_markup=markup)
+    except:
+        bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
 
 # ====== لوحة الادمن ======
 @bot.message_handler(commands=['admin'])
@@ -157,13 +157,12 @@ def get_hamsa_text(message):
         reply_markup=markup
     )
     
-    # نحفظ الهمسة بمفتاح رسالة البوت مباشرة
     h[f"msg_{msg.message_id}"] = text
     save("hamsa.json", h)
     del h[str(from_id)]
     save("hamsa.json", h)
 
-# ====== فتح الهمسة - مصلح نهائي ======
+# ====== فتح الهمسة ======
 @bot.callback_query_handler(func=lambda call: call.data.startswith("open&"))
 def open_hamsa(call):
     _, to_id, from_id = call.data.split("&")

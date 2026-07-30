@@ -2,7 +2,7 @@ import telebot
 import os
 import json
 import time
-import traceback # اضفناه حتى نعرف الخطأ
+import traceback
 from threading import Thread
 from flask import Flask
 
@@ -69,8 +69,7 @@ def start(message):
         markup.add(telebot.types.InlineKeyboardButton("➕ ضفني لمجموعتك", url=f"https://t.me/{UserBot}?startgroup=true"))
         try:
             bot.send_photo(chat_id, photo=ADMIN, caption=WELCOME_MSG, reply_markup=markup)
-        except Exception as e:
-            print("Error send_photo:", e)
+        except:
             bot.send_message(chat_id, WELCOME_MSG, reply_markup=markup)
     except Exception as e:
         print("Error in start:", traceback.format_exc())
@@ -100,14 +99,16 @@ def hamsa_reply(message):
         to_id = message.reply_to_message.from_user.id
         chat_id = message.chat.id
         reply_id = message.reply_to_message.message_id
-        hamsa_key = f"{from_id}_{to_id}_{reply_id}_{chat_id}"
         
+        # رقم تسلسلي قصير بدل المفتاح الطويل
         h = load("hamsa.json")
+        hamsa_id = str(int(time.time())) # رقم وقتي قصير
+        
         h[str(from_id)] = {
             'chat_id': chat_id,
             'to': to_id,
             'reply_msg_id': reply_id,
-            'hamsa_key': hamsa_key,
+            'hamsa_id': hamsa_id,
             'state': 'waiting'
         }
         save("hamsa.json", h)
@@ -117,7 +118,6 @@ def hamsa_reply(message):
         bot.reply_to(message, "*اهلا بك يمكنك الضغط على الزر وإرسال الهمسة في ⤾خاص البوت 🧸♥️*", reply_markup=markup)
     except Exception as e:
         print("Error in hamsa_reply:", traceback.format_exc())
-        bot.reply_to(message, f"❌ صار خطأ: {e}")
 
 @bot.message_handler(func=lambda m: str(m.from_user.id) in load("hamsa.json") and load("hamsa.json")[str(m.from_user.id)].get('state') == 'send')
 def get_hamsa_text(message):
@@ -130,16 +130,21 @@ def get_hamsa_text(message):
         
         bot.send_message(message.chat.id, "*⤾ . تم ارسال الهمسة بنجاح 🥳✅*")
         
-        h[data['hamsa_key']] = text
+        # نخزن الهمسة برقم قصير
+        h[data['hamsa_id']] = {
+            'text': text,
+            'from': from_id,
+            'to': data['to']
+        }
         save("hamsa.json", h)
         
         markup = telebot.types.InlineKeyboardMarkup()
+        # هسه الزر قصير جدا
         markup.add(
-            telebot.types.InlineKeyboardButton("🧧 فتح الهمسـه", callback_data=f"open&{data['hamsa_key']}&{data['to']}&{from_id}"),
-            telebot.types.InlineKeyboardButton("🚫 حذف", callback_data=f"del&{data['hamsa_key']}&{from_id}")
+            telebot.types.InlineKeyboardButton("🧧 فتح الهمسـه", callback_data=f"o&{data['hamsa_id']}"),
+            telebot.types.InlineKeyboardButton("🚫 حذف", callback_data=f"d&{data['hamsa_id']}")
         )
         
-        # هنا المشكلة كانت ممكن تصير
         bot.send_message(
             data['chat_id'],
             f"*⤾ . ؏ــمرري 🧸♥️ لديك همسة من*\n[{filterName(message.from_user.first_name)}](tg://user?id={from_id})",
@@ -153,17 +158,22 @@ def get_hamsa_text(message):
         print("Error in get_hamsa_text:", traceback.format_exc())
         bot.send_message(message.chat.id, f"❌ فشل ارسال الهمسة للكروب. الخطأ: {e}")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("open&"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("o&"))
 def open_hamsa(call):
     try:
-        _, hamsa_key, to_id, from_id = call.data.split("&")
-        to_id, from_id = int(to_id), int(from_id)
-        from_id2 = call.from_user.id
+        _, hamsa_id = call.data.split("&")
         h = load("hamsa.json")
-        text = h.get(hamsa_key)
-        if not text: 
+        data = h.get(hamsa_id)
+        
+        if not data: 
             bot.answer_callback_query(call.id, "❌ الهمسة منتهية او محذوفة", show_alert=True)
             return
+        
+        from_id = data['from']
+        to_id = data['to']
+        text = data['text']
+        from_id2 = call.from_user.id
+    
         if from_id2 == to_id or from_id2 == from_id:
             bot.answer_callback_query(call.id, f"💌 الهمسة:\n\n{text}", show_alert=True)
         else:
@@ -172,15 +182,17 @@ def open_hamsa(call):
     except Exception as e:
         print("Error in open_hamsa:", traceback.format_exc())
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("del&"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("d&"))
 def del_hamsa(call):
     try:
-        _, hamsa_key, from_id = call.data.split("&")
-        from_id = int(from_id)
-        if call.from_user.id == from_id:
-            h = load("hamsa.json")
-            if hamsa_key in h:
-                del h[hamsa_key]
+        _, hamsa_id = call.data.split("&")
+        h = load("hamsa.json")
+        data = h.get(hamsa_id)
+        if not data: return
+        
+        if call.from_user.id == data['from']:
+            if hamsa_id in h:
+                del h[hamsa_id]
                 save("hamsa.json", h)
             bot.delete_message(call.message.chat.id, call.message_id)
             bot.answer_callback_query(call.id, "✅ تم حذف الهمسة")
